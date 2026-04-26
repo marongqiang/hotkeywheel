@@ -1,0 +1,22 @@
+{
+	"schemaVersion": 1,
+	"id": "hotkeywheel",
+	"name": "Hotkey Wheel",
+	"version": "0.1.0",
+	"description": "Radial key wheel: resolve key conflicts. Vanilla KeyBinding always; with MaLiLib, also Masa family hotkeys (optional).",
+	"authors": ["masa", "workspace"],
+	"license": "LGPL-3.0",
+	"environment": "client",
+	"entrypoints": {
+		"client": [ "fi.dy.masa.hotkeywheel.HotkeyWheelClient" ]
+	},
+	"depends": {
+		"fabricloader": "*",
+		"fabric-api": "*",
+		"minecraft": "1.20.x"
+	},
+	"recommends": {
+		"malilib": "*"
+	},
+	"mixins": [ "hotkeywheel.mixins.json" ]
+}

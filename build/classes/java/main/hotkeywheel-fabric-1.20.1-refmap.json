@@ -1,0 +1,14 @@
+{
+  "mappings": {
+    "fi/dy/masa/hotkeywheel/mixin/KeyboardMixin": {
+      "onKey": "Lnet/minecraft/class_309;method_1466(JIIII)V"
+    }
+  },
+  "data": {
+    "named:intermediary": {
+      "fi/dy/masa/hotkeywheel/mixin/KeyboardMixin": {
+        "onKey": "Lnet/minecraft/class_309;method_1466(JIIII)V"
+      }
+    }
+  }
+}

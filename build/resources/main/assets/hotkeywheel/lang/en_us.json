@@ -1,0 +1,18 @@
+{
+  "key.category.hotkeywheel": "Hotkey Wheel",
+  "key.hotkeywheel.openconfig": "Open hotkey wheel settings",
+  "hotkeywheel.modname.minecraft": "Minecraft",
+  "hotkeywheel.gui.title.configs": "Hotkey Wheel",
+  "hotkeywheel.gui.hint.keybind": "In Controls, set \"%s\" to open this screen. Default: O.",
+  "hotkeywheel.gui.scan.hint": "Count = 1: no other action shares that key. The wheel only appears in-game when count ≥ 2 (same key, multiple actions).",
+  "hotkeywheel.gui.button.scan_refresh": "Scan keybinds",
+  "hotkeywheel.gui.col.enable": "Wheel",
+  "hotkeywheel.gui.col.hotkey": "Hotkey",
+  "hotkeywheel.gui.col.count": "Bindings",
+  "hotkeywheel.gui.col.details": "List",
+  "hotkeywheel.gui.button.details": "Details",
+  "hotkeywheel.gui.title.function_list": "Bound actions for this key",
+  "hotkeywheel.gui.col.participate": "In wheel",
+  "hotkeywheel.gui.col.mod": "Mod",
+  "hotkeywheel.gui.col.function": "Action"
+}
