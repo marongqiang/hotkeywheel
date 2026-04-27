@@ -5,6 +5,7 @@ import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -18,8 +19,12 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonSyntaxException;
 import net.fabricmc.loader.api.FabricLoader;
+import fi.dy.masa.hotkeywheel.HotkeyWheelClient;
 import fi.dy.masa.hotkeywheel.HotkeyWheelReference;
+import fi.dy.masa.hotkeywheel.util.HotkeyWheelDefaultIcons;
 
 /**
  * hotkeywheel.json: enabled combo ids, per-combo per-action exclusions.
@@ -39,6 +44,16 @@ public final class HotkeyWheelConfigStore
     private final Set<String> hiddenFromWheel = new LinkedHashSet<>();
     private final List<String> wheelActionSortOrder = new ArrayList<>();
     private int shortLabelMaxChars = 20;
+    // UI / renderer options (reserved for customization)
+    private boolean wheelShowDividers = true;
+    private float wheelInnerRingAlpha = 0.72f;
+    private float wheelOuterRingAlpha = 0.78f;
+    private int wheelHoverTintColor = 0xFFFFFFFF;
+    private float wheelIconScaleInner = 1.10f;
+    private float wheelIconScaleOuter = 1.18f;
+    private float wheelRingGapPx = 10f;
+    private String wheelTheme = "tactical"; // "tactical" | "clean_light"
+    private boolean wheelDebugLogging = false;
     private final Path file;
 
     private HotkeyWheelConfigStore()
@@ -46,7 +61,7 @@ public final class HotkeyWheelConfigStore
         this.file = FabricLoader.getInstance().getConfigDir().resolve(FILE_NAME);
     }
 
-    public Set<String> getEnabledCombos() { return this.enabledCombos; }
+    public Set<String> getEnabledCombos() { return Collections.unmodifiableSet(this.enabledCombos); }
 
     public boolean isComboWheelEnabled(String comboIdUpper)
     {
@@ -74,7 +89,21 @@ public final class HotkeyWheelConfigStore
     public String getIconItemIdForAction(String actionId)
     {
         if (actionId == null) return null;
-        return this.iconItemIds.get(actionId);
+        String fromConfig = this.iconItemIds.get(actionId);
+        if (fromConfig != null && fromConfig.isEmpty() == false) return fromConfig;
+        String d = HotkeyWheelDefaultIcons.itemIdForAction(actionId);
+        return d != null ? d : "minecraft:cobblestone";
+    }
+
+    public void setIconIdForAction(String actionId, String iconIdOrNull)
+    {
+        if (actionId == null) return;
+        if (iconIdOrNull == null || iconIdOrNull.trim().isEmpty())
+        {
+            this.iconItemIds.remove(actionId);
+            return;
+        }
+        this.iconItemIds.put(actionId, iconIdOrNull.trim());
     }
 
     public boolean isHiddenFromWheel(String actionId)
@@ -88,9 +117,37 @@ public final class HotkeyWheelConfigStore
         return this.wheelActionSortOrder;
     }
 
+    public void setWheelActionSortOrder(List<String> order)
+    {
+        this.wheelActionSortOrder.clear();
+        if (order == null || order.isEmpty()) return;
+        for (String s : order)
+        {
+            if (s != null && s.trim().isEmpty() == false) this.wheelActionSortOrder.add(s.trim());
+        }
+    }
+
     public int getShortLabelMaxChars()
     {
         return this.shortLabelMaxChars;
+    }
+
+    public boolean wheelShowDividers() { return this.wheelShowDividers; }
+    public float wheelInnerRingAlpha() { return this.wheelInnerRingAlpha; }
+    public float wheelOuterRingAlpha() { return this.wheelOuterRingAlpha; }
+    public int wheelHoverTintColor() { return this.wheelHoverTintColor; }
+    public float wheelIconScaleInner() { return this.wheelIconScaleInner; }
+    public float wheelIconScaleOuter() { return this.wheelIconScaleOuter; }
+    public float wheelRingGapPx() { return this.wheelRingGapPx; }
+    public String wheelTheme() { return this.wheelTheme; }
+    public boolean wheelDebugLogging() { return this.wheelDebugLogging; }
+
+    public void setWheelTheme(String theme)
+    {
+        if (theme == null) return;
+        String t = theme.trim();
+        if (t.isEmpty()) return;
+        this.wheelTheme = t;
     }
 
     public void sortActions(List<WheelAction> inOut)
@@ -138,6 +195,15 @@ public final class HotkeyWheelConfigStore
         this.hiddenFromWheel.clear();
         this.wheelActionSortOrder.clear();
         this.shortLabelMaxChars = 20;
+        this.wheelShowDividers = true;
+        this.wheelInnerRingAlpha = 0.72f;
+        this.wheelOuterRingAlpha = 0.78f;
+        this.wheelHoverTintColor = 0xFFFFFFFF;
+        this.wheelIconScaleInner = 1.10f;
+        this.wheelIconScaleOuter = 1.18f;
+        this.wheelRingGapPx = 10f;
+        this.wheelTheme = "tactical";
+        this.wheelDebugLogging = false;
         if (Files.isRegularFile(this.file) == false)
         {
             this.migrateFromMalilib();
@@ -145,7 +211,56 @@ public final class HotkeyWheelConfigStore
         }
         if (Files.isRegularFile(this.file) == false) return;
         try (Reader r = Files.newBufferedReader(this.file)) { this.parse(r); }
-        catch (IOException e) { e.printStackTrace(); }
+        catch (JsonSyntaxException e)
+        {
+            e.printStackTrace();
+            this.resetToDefaultConfigAndSave();
+        }
+        catch (JsonParseException e)
+        {
+            e.printStackTrace();
+            this.resetToDefaultConfigAndSave();
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+
+        // Migration: older configs may have persisted the previous default icon scales,
+        // which would "override" new defaults and make UI changes appear to have no effect.
+        boolean migrated = false;
+        if (approx(this.wheelIconScaleInner, 0.88f) || approx(this.wheelIconScaleInner, 0.96f))
+        {
+            this.wheelIconScaleInner = 1.10f;
+            migrated = true;
+        }
+        if (approx(this.wheelIconScaleOuter, 1.08f))
+        {
+            this.wheelIconScaleOuter = 1.18f;
+            migrated = true;
+        }
+        if (migrated) this.save();
+    }
+
+    private void resetToDefaultConfigAndSave()
+    {
+        this.enabledCombos.clear();
+        this.disabledOnCombo.clear();
+        this.labelOverrides.clear();
+        this.iconItemIds.clear();
+        this.hiddenFromWheel.clear();
+        this.wheelActionSortOrder.clear();
+        this.shortLabelMaxChars = 20;
+        this.wheelShowDividers = true;
+        this.wheelInnerRingAlpha = 0.72f;
+        this.wheelOuterRingAlpha = 0.78f;
+        this.wheelHoverTintColor = 0xFFFFFFFF;
+        this.wheelIconScaleInner = 1.10f;
+        this.wheelIconScaleOuter = 1.18f;
+        this.wheelRingGapPx = 10f;
+        this.wheelTheme = "tactical";
+        this.wheelDebugLogging = false;
+        this.save();
     }
 
     public void save()
@@ -162,10 +277,24 @@ public final class HotkeyWheelConfigStore
             g.add("hiddenFromWheel", toJsonArray(new ArrayList<>(this.hiddenFromWheel)));
             g.add("wheelActionSortOrder", toJsonArray(this.wheelActionSortOrder));
             g.addProperty("shortLabelMaxChars", this.shortLabelMaxChars);
+            JsonObject ui = new JsonObject();
+            ui.addProperty("showDividers", this.wheelShowDividers);
+            ui.addProperty("innerRingAlpha", this.wheelInnerRingAlpha);
+            ui.addProperty("outerRingAlpha", this.wheelOuterRingAlpha);
+            ui.addProperty("hoverTintColor", this.wheelHoverTintColor);
+            ui.addProperty("iconScaleInner", this.wheelIconScaleInner);
+            ui.addProperty("iconScaleOuter", this.wheelIconScaleOuter);
+            ui.addProperty("ringGapPx", this.wheelRingGapPx);
+            ui.addProperty("theme", this.wheelTheme);
+            ui.addProperty("debugLogging", this.wheelDebugLogging);
+            g.add("ui", ui);
             root.add("Generic", g);
             Files.writeString(this.file, GSON.toJson(root));
         }
-        catch (IOException e) { e.printStackTrace(); }
+        catch (IOException e)
+        {
+            HotkeyWheelClient.LOGGER.warn("Hotkey Wheel: failed to save config '{}'", this.file, e);
+        }
     }
 
     private void migrateFromMalilib()
@@ -192,10 +321,13 @@ public final class HotkeyWheelConfigStore
         catch (IOException e) { e.printStackTrace(); }
     }
 
-    private void parse(Reader r)
+    private void parse(Reader r) throws JsonParseException
     {
         JsonObject root = GSON.fromJson(r, JsonObject.class);
-        if (root == null || root.has("Generic") == false || root.get("Generic").isJsonObject() == false) return;
+        if (root == null || root.has("Generic") == false || root.get("Generic").isJsonObject() == false)
+        {
+            throw new JsonParseException("hotkeywheel.json: missing Generic object");
+        }
         JsonObject g = root.getAsJsonObject("Generic");
         readStringSet(g, "hotkeyWheelEnabledCombos", this.enabledCombos);
         if (this.enabledCombos.isEmpty()) readStringSetAsWhitelist(g, "hotkeyWheelWhitelist", this.enabledCombos);
@@ -210,6 +342,70 @@ public final class HotkeyWheelConfigStore
             if (this.shortLabelMaxChars < 4) this.shortLabelMaxChars = 4;
             if (this.shortLabelMaxChars > 64) this.shortLabelMaxChars = 64;
         }
+        if (g != null && g.has("ui") && g.get("ui").isJsonObject())
+        {
+            JsonObject ui = g.getAsJsonObject("ui");
+            if (ui.has("showDividers") && ui.get("showDividers").isJsonPrimitive())
+            {
+                try { this.wheelShowDividers = ui.get("showDividers").getAsBoolean(); } catch (Exception ignored) { }
+            }
+            if (ui.has("innerRingAlpha") && ui.get("innerRingAlpha").isJsonPrimitive())
+            {
+                try { this.wheelInnerRingAlpha = clamp01(ui.get("innerRingAlpha").getAsFloat()); } catch (Exception ignored) { }
+            }
+            if (ui.has("outerRingAlpha") && ui.get("outerRingAlpha").isJsonPrimitive())
+            {
+                try { this.wheelOuterRingAlpha = clamp01(ui.get("outerRingAlpha").getAsFloat()); } catch (Exception ignored) { }
+            }
+            if (ui.has("hoverTintColor") && ui.get("hoverTintColor").isJsonPrimitive())
+            {
+                try { this.wheelHoverTintColor = ui.get("hoverTintColor").getAsInt(); } catch (Exception ignored) { }
+            }
+            if (ui.has("iconScaleInner") && ui.get("iconScaleInner").isJsonPrimitive())
+            {
+                try { this.wheelIconScaleInner = clamp(ui.get("iconScaleInner").getAsFloat(), 0.5f, 2.0f); } catch (Exception ignored) { }
+            }
+            if (ui.has("iconScaleOuter") && ui.get("iconScaleOuter").isJsonPrimitive())
+            {
+                try { this.wheelIconScaleOuter = clamp(ui.get("iconScaleOuter").getAsFloat(), 0.5f, 2.0f); } catch (Exception ignored) { }
+            }
+            if (ui.has("ringGapPx") && ui.get("ringGapPx").isJsonPrimitive())
+            {
+                try { this.wheelRingGapPx = clamp(ui.get("ringGapPx").getAsFloat(), 0f, 48f); } catch (Exception ignored) { }
+            }
+            if (ui.has("theme") && ui.get("theme").isJsonPrimitive())
+            {
+                try
+                {
+                    String t = ui.get("theme").getAsString();
+                    if (t != null && t.trim().isEmpty() == false) this.wheelTheme = t.trim();
+                }
+                catch (Exception ignored) { }
+            }
+            if (ui.has("debugLogging") && ui.get("debugLogging").isJsonPrimitive())
+            {
+                try { this.wheelDebugLogging = ui.get("debugLogging").getAsBoolean(); } catch (Exception ignored) { }
+            }
+        }
+    }
+
+    private static float clamp01(float v)
+    {
+        if (v < 0f) return 0f;
+        if (v > 1f) return 1f;
+        return v;
+    }
+
+    private static float clamp(float v, float min, float max)
+    {
+        if (v < min) return min;
+        if (v > max) return max;
+        return v;
+    }
+
+    private static boolean approx(float a, float b)
+    {
+        return Math.abs(a - b) < 0.0005f;
     }
 
     private static void readStringSetCaseSensitive(JsonObject g, String key, Set<String> out)

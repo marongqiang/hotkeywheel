@@ -15,6 +15,8 @@ public class KeyboardMixin
     private void hotkeywheel$onKey(long window, int key, int scancode, int action, int modifiers, CallbackInfo ci)
     {
         if (key == HotkeyKeyCodes.KEY_NONE) return;
-        if (HotkeyWheelManager.INSTANCE.onKeyboardKey(key, scancode, action, modifiers)) ci.cancel();
+        if (HotkeyWheelManager.INSTANCE == null) return;
+        boolean handled = HotkeyWheelManager.INSTANCE.onKeyboardKey(key, scancode, action, modifiers);
+        if (handled && HotkeyWheelManager.INSTANCE.isOpen()) ci.cancel();
     }
 }

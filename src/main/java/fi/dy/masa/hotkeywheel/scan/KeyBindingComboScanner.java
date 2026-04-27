@@ -95,7 +95,7 @@ public final class KeyBindingComboScanner
         {
             try
             {
-                mlByCombo = fi.dy.masa.hotkeywheel.compat.malilib.MalilibKeybindScanHelper.buildLinesByCombo();
+                mlByCombo = fi.dy.masa.hotkeywheel.compat.MalilibAccessReflective.INSTANCE.buildScanLines();
             }
             catch (Throwable t)
             {

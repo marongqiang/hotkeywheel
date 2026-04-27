@@ -1,4 +1,6 @@
 {
+  "hotkeywheel.ui.wheel_title": "战术轮盘",
+  "hotkeywheel.ui.hub_cancel": "松手以取消",
   "key.category.hotkeywheel": "快捷键轮盘",
   "key.hotkeywheel.openconfig": "打开轮盘设置",
   "hotkeywheel.modname.minecraft": "Minecraft",
@@ -14,5 +16,13 @@
   "hotkeywheel.gui.title.function_list": "此按键绑定的功能",
   "hotkeywheel.gui.col.participate": "参与轮盘",
   "hotkeywheel.gui.col.mod": "Mod",
-  "hotkeywheel.gui.col.function": "功能"
+  "hotkeywheel.gui.col.function": "功能",
+  "hotkeywheel.gui.col.icon": "图标",
+  "hotkeywheel.gui.title.icon_picker": "选择图标",
+  "hotkeywheel.gui.icon.search": "搜索",
+  "hotkeywheel.gui.icon.tab_vanilla": "原版物品",
+  "hotkeywheel.gui.icon.tab_custom": "自定义图标",
+  "hotkeywheel.gui.button.ui_preview": "UI预览",
+  "hotkeywheel.gui.title.ui_preview": "轮盘预览",
+  "hotkeywheel.gui.hint.drag_reorder": "拖拽调整位置，松开确认；移入中心区域取消"
 }

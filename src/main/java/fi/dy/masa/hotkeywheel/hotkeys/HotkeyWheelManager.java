@@ -13,8 +13,8 @@ import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.resource.language.I18n;
 import org.lwjgl.glfw.GLFW;
 import fi.dy.masa.hotkeywheel.HotkeyWheelClient;
+import fi.dy.masa.hotkeywheel.compat.MalilibAccessReflective;
 import fi.dy.masa.hotkeywheel.config.HotkeyWheelConfigStore;
-import fi.dy.masa.hotkeywheel.gui.HotkeyWheelGameScreen;
 import fi.dy.masa.hotkeywheel.gui.HotkeyWheelRadialLayout;
 import fi.dy.masa.hotkeywheel.gui.HotkeyWheelRadialRenderer;
 import fi.dy.masa.hotkeywheel.gui.HotkeyWheelRadialView;
@@ -32,22 +32,27 @@ public final class HotkeyWheelManager
     private final MinecraftClient mc = MinecraftClient.getInstance();
     private boolean open;
     private int selectedIndex = -1;
+    /** Locked at key release while feedback plays; used for rendering only. */
+    private int feedbackLockedIndex = -1;
     private int activeKeyCode = -1;
     private final List<WheelAction> activeEntries = new ArrayList<>();
-    private HotkeyWheelGameScreen screen;
-    private net.minecraft.client.gui.screen.Screen parentScreen;
-    /**
-     * When true, wheel is draw-only (no {@link net.minecraft.client.gui.screen.Screen}): avoids Fabric
-     * setScreen(null) + ScreenEvents NPE.
-     */
-    private boolean wheelOverlayOnly;
     private int lastHoverForStable = Integer.MIN_VALUE;
     private long hoverSinceMs = 0L;
     private int feedbackSlice = -1;
     private long feedbackEndMs = 0L;
     private boolean closingAfterFeedback;
+    /** Vanilla key: release on the tick after PRESS. */
+    private net.minecraft.client.util.InputUtil.Key vanillaKeyToRelease;
+    /** Vanilla key binding: release (pressed=false) on next tick after a wheel-triggered press. */
+    private KeyBinding vanillaBindingToRelease;
+    private long nextDebugLogMs = 0L;
 
     private HotkeyWheelManager() { }
+
+    public boolean isOpen()
+    {
+        return this.open;
+    }
 
     public int getFeedbackSliceIndex()
     {
@@ -59,8 +64,20 @@ public final class HotkeyWheelManager
         return this.feedbackEndMs;
     }
 
+    public void scheduleVanillaKeyReleaseForNextTick(net.minecraft.client.util.InputUtil.Key k)
+    {
+        this.vanillaKeyToRelease = k;
+    }
+
+    public void scheduleVanillaBindingReleaseForNextTick(KeyBinding kb)
+    {
+        this.vanillaBindingToRelease = kb;
+    }
+
     public void tick()
     {
+        this.applyPendingVanillaKeyRelease();
+        this.applyPendingVanillaBindingRelease();
         if (this.closingAfterFeedback)
         {
             if (this.feedbackEndMs > 0L && System.currentTimeMillis() >= this.feedbackEndMs)
@@ -68,34 +85,60 @@ public final class HotkeyWheelManager
                 this.closingAfterFeedback = false;
                 this.feedbackSlice = -1;
                 this.feedbackEndMs = 0L;
+                this.feedbackLockedIndex = -1;
                 this.close();
             }
             return;
         }
         if (this.mc.player == null || this.mc.world == null)
         {
-            if (this.wheelOverlayOnly && this.open)
-            {
-                this.mc.mouse.lockCursor();
-                this.wheelOverlayOnly = false;
-            }
-            this.open = false;
+            if (this.open) this.close();
             return;
         }
-        if (this.open && this.screen != null)
-        {
-            this.selectedIndex = this.screen.getSelectedIndex();
-        }
-        else if (this.open && this.wheelOverlayOnly)
-        {
-            this.selectedIndex = this.computeIndexFromMouseForOverlay();
-        }
+        if (this.open) this.selectedIndex = this.computeIndexFromMouseForOverlay();
         this.updateHoverStability();
+    }
+
+    private void applyPendingVanillaKeyRelease()
+    {
+        if (this.vanillaKeyToRelease == null) return;
+        KeyBinding.setKeyPressed(this.vanillaKeyToRelease, false);
+        this.vanillaKeyToRelease = null;
+    }
+
+    private void applyPendingVanillaBindingRelease()
+    {
+        if (this.vanillaBindingToRelease == null) return;
+        try
+        {
+            // Try method first (when available in mappings), then fall back to field.
+            var m = KeyBinding.class.getDeclaredMethod("setPressed", boolean.class);
+            m.setAccessible(true);
+            m.invoke(this.vanillaBindingToRelease, false);
+        }
+        catch (Throwable t)
+        {
+            try
+            {
+                var f = KeyBinding.class.getDeclaredField("pressed");
+                f.setAccessible(true);
+                f.setBoolean(this.vanillaBindingToRelease, false);
+            }
+            catch (Throwable ignored) { }
+        }
+        this.vanillaBindingToRelease = null;
+    }
+
+    private void runOnMainThreadClient(Runnable r)
+    {
+        if (this.mc == null) return;
+        this.mc.execute(r);
     }
 
     private void updateHoverStability()
     {
         if (this.open == false) return;
+        if (this.closingAfterFeedback) return;
         if (this.selectedIndex != this.lastHoverForStable)
         {
             this.lastHoverForStable = this.selectedIndex;
@@ -106,11 +149,7 @@ public final class HotkeyWheelManager
     public boolean onKeyboardKey(int key, int scancode, int action, int modifiers)
     {
         if (key == HotkeyKeyCodes.KEY_NONE) return false;
-        if (this.wheelOverlayOnly)
-        {
-            if (this.mc.currentScreen != null) return false;
-        }
-        else if (this.mc.currentScreen != null && this.mc.currentScreen != this.screen) return false;
+        if (this.mc.currentScreen != null) return false;
         boolean isPress = (action == GLFW.GLFW_PRESS || action == GLFW.GLFW_REPEAT);
         boolean isRelease = (action == GLFW.GLFW_RELEASE);
         if (this.closingAfterFeedback) return this.open;
@@ -118,10 +157,12 @@ public final class HotkeyWheelManager
         {
             if (isRelease && key == this.activeKeyCode)
             {
+                this.refreshSelectionAtRelease();
                 this.triggerSelected();
                 if (this.selectedIndex < 0) this.close();
                 else
                 {
+                    this.feedbackLockedIndex = this.selectedIndex;
                     this.feedbackSlice = this.selectedIndex;
                     this.feedbackEndMs = System.currentTimeMillis() + (long) FEEDBACK_MS;
                     this.closingAfterFeedback = true;
@@ -134,13 +175,24 @@ public final class HotkeyWheelManager
         {
             if (this.isWheelBlockedByWhitelistForKeyPress(key, modifiers)) return false;
             List<WheelAction> entries = this.collectWheelActionsForEvent(key, modifiers);
-            if (entries.size() >= 2)
-            {
-                this.openWith(key, entries);
-                return true;
-            }
+            if (entries.size() < 2) return false;
+            this.openWith(key, entries);
+            return true;
         }
         return false;
+    }
+
+    /** Sync slice index to pointer position at the moment the bind is released. */
+    private void refreshSelectionAtRelease()
+    {
+        if (this.open == false || this.activeEntries.isEmpty()) return;
+        this.selectedIndex = this.computeIndexFromMouseForOverlay();
+    }
+
+    private int getDisplayIndexForView()
+    {
+        if (this.closingAfterFeedback) return this.feedbackLockedIndex;
+        return this.selectedIndex;
     }
 
     private void triggerSelected()
@@ -160,18 +212,18 @@ public final class HotkeyWheelManager
 
     public void renderOverlay(DrawContext drawContext)
     {
-        if (!this.open || this.activeEntries.isEmpty()) return;
-        if (this.wheelOverlayOnly == false) return;
+        if (this.open == false || this.activeEntries.isEmpty()) return;
         if (this.mc.currentScreen != null) return;
         if (this.mc.getWindow() == null) return;
         int w = this.mc.getWindow().getScaledWidth();
         int h = this.mc.getWindow().getScaledHeight();
         int mx = (int) (this.mc.mouse.getX() * (double) w / (double) this.mc.getWindow().getWidth());
         int my = (int) (this.mc.mouse.getY() * (double) h / (double) this.mc.getWindow().getHeight());
+        int disp = this.getDisplayIndexForView();
         long stable = 0L;
-        if (this.selectedIndex >= 0) stable = System.currentTimeMillis() - this.hoverSinceMs;
+        if (disp >= 0) stable = System.currentTimeMillis() - this.hoverSinceMs;
         HotkeyWheelRadialView view = HotkeyWheelRadialView.build(
-                w, h, this.selectedIndex, mx, my, stable, this.activeEntries, HotkeyWheelConfigStore.INSTANCE);
+                w, h, disp, mx, my, stable, this.activeEntries, HotkeyWheelConfigStore.INSTANCE, this.closingAfterFeedback);
         HotkeyWheelRadialRenderer.render(
                 drawContext, view, this.mc.textRenderer, this.getFeedbackSliceIndex(), this.getFeedbackEndMs());
     }
@@ -194,48 +246,32 @@ public final class HotkeyWheelManager
         this.closingAfterFeedback = false;
         this.feedbackSlice = -1;
         this.feedbackEndMs = 0L;
+        this.feedbackLockedIndex = -1;
         this.lastHoverForStable = Integer.MIN_VALUE;
         this.hoverSinceMs = System.currentTimeMillis();
-        this.parentScreen = this.mc.currentScreen;
-        if (this.parentScreen == null)
-        {
-            this.wheelOverlayOnly = true;
-            this.screen = null;
-            this.mc.mouse.unlockCursor();
-        }
-        else
-        {
-            this.wheelOverlayOnly = false;
-            this.screen = new HotkeyWheelGameScreen(this.parentScreen, this.activeEntries);
-            this.mc.setScreen(this.screen);
-        }
+        this.runOnMainThreadClient(() -> this.mc.mouse.unlockCursor());
     }
 
     private void close()
     {
-        if (this.wheelOverlayOnly)
-        {
-            this.mc.mouse.lockCursor();
-        }
-        else if (this.screen != null && this.mc.currentScreen == this.screen)
-        {
-            this.mc.setScreen(this.parentScreen);
-        }
+        this.runOnMainThreadClient(() -> {
+            // If an action opened a GUI (eg. chat), don't forcibly lock the cursor here,
+            // otherwise the screen can get interrupted/closed immediately.
+            if (this.mc.mouse != null && this.mc.currentScreen == null) this.mc.mouse.lockCursor();
+        });
         this.open = false;
-        this.wheelOverlayOnly = false;
         this.activeKeyCode = -1;
         this.activeEntries.clear();
         this.selectedIndex = -1;
-        this.screen = null;
-        this.parentScreen = null;
         this.closingAfterFeedback = false;
         this.feedbackSlice = -1;
         this.feedbackEndMs = 0L;
+        this.feedbackLockedIndex = -1;
     }
 
-    /** Aligned with {@link HotkeyWheelRadialLayout} inner dead zone. */
     private int computeIndexFromMouseForOverlay()
     {
+        if (this.closingAfterFeedback) return this.feedbackLockedIndex;
         if (this.activeEntries == null || this.activeEntries.isEmpty() || this.mc.getWindow() == null) return -1;
         int n = this.activeEntries.size();
         if (n == 1) return 0;
@@ -248,8 +284,72 @@ public final class HotkeyWheelManager
         int cy = h / 2;
         double dx = mx - cx;
         double dy = my - cy;
-        float innerR = HotkeyWheelRadialLayout.innerR(w, h, n);
-        return RadialWheelMath.selectedSegmentIndex(dx, dy, innerR, n);
+        float cancelR = HotkeyWheelRadialLayout.cancelR(w, h);
+        double d2 = dx * dx + dy * dy;
+        if (d2 < (double) cancelR * (double) cancelR) return -1;
+
+        if (n > 8)
+        {
+            float outerR = HotkeyWheelRadialLayout.outerR(w, h);
+            float innerRingOuter = HotkeyWheelRadialLayout.innerRingOuterR(w, h);
+            float outerRingInner = HotkeyWheelRadialLayout.outerRingInnerR(w, h);
+            if (d2 > (double) outerR * (double) outerR) return -1;
+
+            // strict gap between rings: no selection
+            if (d2 > (double) innerRingOuter * (double) innerRingOuter && d2 < (double) outerRingInner * (double) outerRingInner) return -1;
+
+            int nIn = (int) Math.floor(n * 0.40);
+            if (nIn < 1) nIn = 1;
+            if (nIn > n - 1) nIn = n - 1;
+            int nOut = n - nIn;
+
+            if (d2 < (double) innerRingOuter * (double) innerRingOuter)
+            {
+                this.debugWheelPick("inner", n, nIn, nOut, dx, dy, d2, cancelR, innerRingOuter, outerRingInner, outerR, 0.0);
+                return RadialWheelMath.selectedSegmentIndex(dx, dy, cancelR, nIn);
+            }
+            else
+            {
+                if (nOut <= 0) return -1;
+                // Outer ring is staggered by half a sector.
+                double off = Math.PI / (double) nOut;
+                double rdx = dx * Math.cos(off) - dy * Math.sin(off);
+                double rdy = dx * Math.sin(off) + dy * Math.cos(off);
+                this.debugWheelPick("outer", n, nIn, nOut, dx, dy, d2, cancelR, innerRingOuter, outerRingInner, outerR, off);
+                int seg = RadialWheelMath.selectedSegmentIndex(rdx, rdy, cancelR, nOut);
+                return seg < 0 ? -1 : (nIn + seg);
+            }
+        }
+
+        this.debugWheelPick("single", n, n, 0, dx, dy, d2, cancelR, 0f, 0f, HotkeyWheelRadialLayout.outerR(w, h), 0.0);
+        return RadialWheelMath.selectedSegmentIndex(dx, dy, cancelR, n);
+    }
+
+    private void debugWheelPick(
+            String ring,
+            int nTotal,
+            int nIn,
+            int nOut,
+            double dx,
+            double dy,
+            double d2,
+            float cancelR,
+            float innerRingOuter,
+            float outerRingInner,
+            float outerR,
+            double outerOffsetRad)
+    {
+        if (HotkeyWheelConfigStore.INSTANCE.wheelDebugLogging() == false) return;
+        long now = System.currentTimeMillis();
+        if (now < this.nextDebugLogMs) return;
+        this.nextDebugLogMs = now + 200L;
+        double deg = (Math.toDegrees(Math.atan2(dy, dx)) + 450.0) % 360.0;
+        HotkeyWheelClient.LOGGER.info(String.format(
+                Locale.ROOT,
+                "WheelPick ring=%s n=%d in/out=%d/%d dx=%.1f dy=%.1f d2=%.1f deg=%.1f cancelR=%.1f innerOut=%.1f outerIn=%.1f outerR=%.1f offRad=%.4f",
+                ring, nTotal, nIn, nOut,
+                dx, dy, d2, deg,
+                cancelR, innerRingOuter, outerRingInner, outerR, outerOffsetRad));
     }
 
     private boolean isWheelBlockedByWhitelistForKeyPress(int keyCode, int modifiers)
@@ -304,8 +404,7 @@ public final class HotkeyWheelManager
         {
             try
             {
-                fi.dy.masa.hotkeywheel.compat.malilib.MalilibWheelCollection.appendForCombo(
-                        comboId, comboU, disabled, out);
+                MalilibAccessReflective.INSTANCE.appendForCombo(comboId, comboU, disabled, out);
             }
             catch (Throwable t)
             {

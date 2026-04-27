@@ -23,17 +23,20 @@ public final class RadialWheelMath
 
     public static double midAngleRad(int seg, int n)
     {
+        if (n <= 0) return 0.0;
         double segAngle = 2.0 * Math.PI / n;
         return seg * segAngle - Math.PI / 2.0 + segAngle / 2.0;
     }
 
     public static double startAngleRad(int seg, int n)
     {
+        if (n <= 0) return 0.0;
         return seg * (2.0 * Math.PI / n) - Math.PI / 2.0;
     }
 
     public static double endAngleRad(int seg, int n)
     {
+        if (n <= 0) return 0.0;
         return (seg + 1) * (2.0 * Math.PI / n) - Math.PI / 2.0;
     }
 }

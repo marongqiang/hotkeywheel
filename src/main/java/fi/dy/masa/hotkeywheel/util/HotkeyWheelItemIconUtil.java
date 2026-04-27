@@ -16,18 +16,18 @@ public final class HotkeyWheelItemIconUtil
 
     public static ItemStack stackForItemId(@Nullable String id)
     {
-        if (id == null || id.trim().isEmpty()) return ItemStack.EMPTY;
+        if (id == null || id.trim().isEmpty()) return new ItemStack(Items.COBBLESTONE);
         String s = id.trim();
         try
         {
             Identifier rid = new Identifier(s);
             Item it = Registries.ITEM.get(rid);
-            if (it == null || it == Items.AIR) return ItemStack.EMPTY;
+            if (it == null || it == Items.AIR) return new ItemStack(Items.COBBLESTONE);
             return new ItemStack(it);
         }
         catch (Exception e)
         {
-            return ItemStack.EMPTY;
+            return new ItemStack(Items.COBBLESTONE);
         }
     }
 }

@@ -1,22 +1,12 @@
-# Gradle
+# Gradle 缓存
 .gradle/
+
+# 编译输出
 build/
-out/
-bin/
-classes/
 
-# IDE
-.idea/
-*.iml
-.vscode/
-*.sw[op]
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Local run directory (if present)
+# 运行输出
 run/
 
-# Logs
+# 日志文件
 *.log
+.aider*

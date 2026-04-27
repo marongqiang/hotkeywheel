@@ -1,4 +1,6 @@
 {
+  "hotkeywheel.ui.wheel_title": "Tactical Wheel",
+  "hotkeywheel.ui.hub_cancel": "Release to cancel",
   "key.category.hotkeywheel": "Hotkey Wheel",
   "key.hotkeywheel.openconfig": "Open hotkey wheel settings",
   "hotkeywheel.modname.minecraft": "Minecraft",
@@ -14,5 +16,13 @@
   "hotkeywheel.gui.title.function_list": "Bound actions for this key",
   "hotkeywheel.gui.col.participate": "In wheel",
   "hotkeywheel.gui.col.mod": "Mod",
-  "hotkeywheel.gui.col.function": "Action"
+  "hotkeywheel.gui.col.function": "Action",
+  "hotkeywheel.gui.col.icon": "Icon",
+  "hotkeywheel.gui.title.icon_picker": "Pick icon",
+  "hotkeywheel.gui.icon.search": "Search",
+  "hotkeywheel.gui.icon.tab_vanilla": "Vanilla items",
+  "hotkeywheel.gui.icon.tab_custom": "Custom icons",
+  "hotkeywheel.gui.button.ui_preview": "UI preview",
+  "hotkeywheel.gui.title.ui_preview": "Wheel preview",
+  "hotkeywheel.gui.hint.drag_reorder": "Drag to reposition, release to apply; move into center to cancel"
 }
