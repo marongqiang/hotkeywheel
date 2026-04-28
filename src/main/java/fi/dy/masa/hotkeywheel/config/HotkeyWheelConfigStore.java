@@ -86,6 +86,19 @@ public final class HotkeyWheelConfigStore
         return this.labelOverrides.get(actionId);
     }
 
+    public void setLabelOverride(String actionId, String labelOrNull)
+    {
+        if (actionId == null) return;
+        String k = actionId.trim();
+        if (k.isEmpty()) return;
+        if (labelOrNull == null || labelOrNull.trim().isEmpty())
+        {
+            this.labelOverrides.remove(k);
+            return;
+        }
+        this.labelOverrides.put(k, labelOrNull.trim());
+    }
+
     public String getIconItemIdForAction(String actionId)
     {
         if (actionId == null) return null;

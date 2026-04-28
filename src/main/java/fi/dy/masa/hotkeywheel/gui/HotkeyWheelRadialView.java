@@ -145,7 +145,7 @@ public final class HotkeyWheelRadialView
                 icons.add(ItemStack.EMPTY);
                 textures.add(null);
             }
-            fulls.add(a == null ? "" : a.getFullLabel());
+            fulls.add(a == null ? "" : WheelActionLabels.tooltipFullLine(a, cfg));
             String p = null;
             if (a != null
                     && closingAfterFeedback == false

@@ -17,6 +17,7 @@
   "hotkeywheel.gui.col.participate": "参与轮盘",
   "hotkeywheel.gui.col.mod": "Mod",
   "hotkeywheel.gui.col.function": "功能",
+  "hotkeywheel.gui.col.custom_name": "自定义名称",
   "hotkeywheel.gui.col.icon": "图标",
   "hotkeywheel.gui.title.icon_picker": "选择图标",
   "hotkeywheel.gui.icon.search": "搜索",

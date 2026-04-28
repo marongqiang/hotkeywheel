@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import org.lwjgl.glfw.GLFW;
@@ -67,13 +68,54 @@ public final class HotkeyWheelKeyComboUtil
         return String.join(",", parts);
     }
 
+    /**
+     * Build a combo id from the current key event and the set of pressed non-modifier keys.
+     * This allows two-key combos like "M+G" to map to a distinct wheel group ("M,G").
+     */
+    public static String buildComboIdFromEventWithHeldKeys(int keyCode, int modifiers, Set<Integer> heldKeys)
+    {
+        if (keyCode == HotkeyKeyCodes.KEY_NONE) return "";
+        List<String> parts = new ArrayList<>(8);
+        if ((modifiers & GLFW.GLFW_MOD_CONTROL) != 0) parts.add("CTRL");
+        if ((modifiers & GLFW.GLFW_MOD_SHIFT) != 0) parts.add("SHIFT");
+        if ((modifiers & GLFW.GLFW_MOD_ALT) != 0) parts.add("ALT");
+        if ((modifiers & GLFW.GLFW_MOD_SUPER) != 0) parts.add("SUPER");
+
+        List<String> mains = new ArrayList<>(4);
+        if (heldKeys != null)
+        {
+            for (int k : heldKeys)
+            {
+                if (k == HotkeyKeyCodes.KEY_NONE) continue;
+                // Ignore pure modifier keys here; they are represented above.
+                if (k == GLFW.GLFW_KEY_LEFT_CONTROL || k == GLFW.GLFW_KEY_RIGHT_CONTROL) continue;
+                if (k == GLFW.GLFW_KEY_LEFT_SHIFT || k == GLFW.GLFW_KEY_RIGHT_SHIFT) continue;
+                if (k == GLFW.GLFW_KEY_LEFT_ALT || k == GLFW.GLFW_KEY_RIGHT_ALT) continue;
+                if (k == GLFW.GLFW_KEY_LEFT_SUPER || k == GLFW.GLFW_KEY_RIGHT_SUPER) continue;
+                String n = HotkeyKeyCodes.getNameForKey(k);
+                if (n != null && n.isEmpty() == false) mains.add(n.toUpperCase(Locale.ROOT));
+            }
+        }
+        // Ensure the current key is part of the combo even if heldKeys tracking is off.
+        String cur = HotkeyKeyCodes.getNameForKey(keyCode);
+        if (cur != null && cur.isEmpty() == false)
+        {
+            String u = cur.toUpperCase(Locale.ROOT);
+            if (mains.contains(u) == false) mains.add(u);
+        }
+        // Stable ordering so storage/scans match runtime.
+        Collections.sort(mains);
+        parts.addAll(mains);
+        return String.join(",", parts);
+    }
+
     public static List<String> getComboIdsForStorageString(String storage)
     {
         if (storage == null) return List.of();
         String[] parts = storage.split(",");
         if (parts.length == 0) return List.of();
         boolean ctrl = false, shift = false, alt = false, superKey = false;
-        List<String> mains = new ArrayList<>(2);
+        List<String> mains = new ArrayList<>(4);
         for (String raw : parts)
         {
             if (raw == null) continue;
@@ -86,18 +128,14 @@ public final class HotkeyWheelKeyComboUtil
             else mains.add(k);
         }
         if (mains.isEmpty()) return List.of();
-        List<String> out = new ArrayList<>(mains.size());
-        for (String main : mains)
-        {
-            List<String> combo = new ArrayList<>(5);
-            if (ctrl) combo.add("CTRL");
-            if (shift) combo.add("SHIFT");
-            if (alt) combo.add("ALT");
-            if (superKey) combo.add("SUPER");
-            combo.add(main);
-            out.add(String.join(",", combo));
-        }
-        return out;
+        Collections.sort(mains);
+        List<String> combo = new ArrayList<>(8);
+        if (ctrl) combo.add("CTRL");
+        if (shift) combo.add("SHIFT");
+        if (alt) combo.add("ALT");
+        if (superKey) combo.add("SUPER");
+        combo.addAll(mains);
+        return List.of(String.join(",", combo));
     }
 
     public static String comboIdToDisplayString(String comboId)

@@ -17,6 +17,7 @@
   "hotkeywheel.gui.col.participate": "In wheel",
   "hotkeywheel.gui.col.mod": "Mod",
   "hotkeywheel.gui.col.function": "Action",
+  "hotkeywheel.gui.col.custom_name": "Custom name",
   "hotkeywheel.gui.col.icon": "Icon",
   "hotkeywheel.gui.title.icon_picker": "Pick icon",
   "hotkeywheel.gui.icon.search": "Search",

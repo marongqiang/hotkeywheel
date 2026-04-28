@@ -36,6 +36,8 @@ public final class HotkeyWheelManager
     private int feedbackLockedIndex = -1;
     private int activeKeyCode = -1;
     private final List<WheelAction> activeEntries = new ArrayList<>();
+    /** Track currently held keys so "M+G" can be distinguished from "M". */
+    private final java.util.Set<Integer> heldKeys = new java.util.HashSet<>();
     private int lastHoverForStable = Integer.MIN_VALUE;
     private long hoverSinceMs = 0L;
     private int feedbackSlice = -1;
@@ -152,6 +154,11 @@ public final class HotkeyWheelManager
         if (this.mc.currentScreen != null) return false;
         boolean isPress = (action == GLFW.GLFW_PRESS || action == GLFW.GLFW_REPEAT);
         boolean isRelease = (action == GLFW.GLFW_RELEASE);
+
+        // Maintain held key state for combo detection.
+        if (isPress) this.heldKeys.add(key);
+        if (isRelease) this.heldKeys.remove(key);
+
         if (this.closingAfterFeedback) return this.open;
         if (this.open)
         {
@@ -356,7 +363,7 @@ public final class HotkeyWheelManager
     {
         var enabled = HotkeyWheelConfigStore.INSTANCE.getEnabledCombos();
         if (enabled.isEmpty()) return true;
-        String comboId = HotkeyWheelKeyComboUtil.buildComboIdFromEvent(keyCode, modifiers);
+        String comboId = HotkeyWheelKeyComboUtil.buildComboIdFromEventWithHeldKeys(keyCode, modifiers, this.heldKeys);
         if (comboId.isEmpty()) return true;
         return enabled.contains(comboId) == false;
     }
@@ -371,7 +378,7 @@ public final class HotkeyWheelManager
     private List<WheelAction> collectWheelActionsForEvent(int keyCode, int modifiers)
     {
         if (HotkeyWheelConfigStore.INSTANCE.getEnabledCombos().isEmpty()) return List.of();
-        String comboId = HotkeyWheelKeyComboUtil.buildComboIdFromEvent(keyCode, modifiers);
+        String comboId = HotkeyWheelKeyComboUtil.buildComboIdFromEventWithHeldKeys(keyCode, modifiers, this.heldKeys);
         if (comboId.isEmpty()) return List.of();
         if (HotkeyWheelConfigStore.INSTANCE.isComboWheelEnabled(comboId) == false) return List.of();
         String comboU = comboId.toUpperCase(Locale.ROOT);

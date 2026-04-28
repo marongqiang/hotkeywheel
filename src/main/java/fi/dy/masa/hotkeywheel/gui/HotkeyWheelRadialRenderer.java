@@ -453,23 +453,8 @@ public final class HotkeyWheelRadialRenderer
             {
                 tool.add(Text.literal(preview).formatted(Formatting.GRAY));
             }
-            ItemStack hint = selectedIndex < view.iconStacks.size() ? view.iconStacks.get(selectedIndex) : ItemStack.EMPTY;
-            if (hint.isEmpty() == false)
-            {
-                MinecraftClient mc = MinecraftClient.getInstance();
-                if (mc.player != null)
-                {
-                    TooltipContext tctx = mc.options.advancedItemTooltips
-                            ? TooltipContext.Default.ADVANCED
-                            : TooltipContext.Default.BASIC;
-                    List<Text> fromItem = hint.getTooltip(mc.player, tctx);
-                    int start = full.isEmpty() ? 0 : 1;
-                    for (int i = start; i < fromItem.size(); i++)
-                    {
-                        tool.add(fromItem.get(i));
-                    }
-                }
-            }
+            // Do NOT show the icon item's tooltip here (it adds unrelated Minecraft item info).
+            // The wheel tooltip should describe the selected action/config entry.
             if (tool.isEmpty() == false) context.drawTooltip(tr, tool, Optional.empty(), view.mouseX, view.mouseY);
         }
     }
