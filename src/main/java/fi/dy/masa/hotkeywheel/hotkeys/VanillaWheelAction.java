@@ -3,6 +3,8 @@ package fi.dy.masa.hotkeywheel.hotkeys;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.client.MinecraftClient;
+import fi.dy.masa.hotkeywheel.HotkeyWheelClient;
+import fi.dy.masa.hotkeywheel.config.HotkeyWheelConfigStore;
 import fi.dy.masa.hotkeywheel.util.KeyBindingModNames;
 
 /**
@@ -52,6 +54,12 @@ public final class VanillaWheelAction implements WheelAction
     public void activate()
     {
         if (this.keyBinding == null) return;
+        if (HotkeyWheelConfigStore.INSTANCE.wheelDebugLogging())
+        {
+            HotkeyWheelClient.LOGGER.info(
+                    "HotkeyWheel vanillaActivate: translationKey={}",
+                    this.keyBinding.getTranslationKey());
+        }
         // Special-case hotbar selection: when multiple actions share the same physical key,
         // KeyBinding.onKeyPressed(InputUtil.Key) cannot target a single binding reliably.
         String tk = this.keyBinding.getTranslationKey();

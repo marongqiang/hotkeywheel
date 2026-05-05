@@ -255,6 +255,16 @@ public final class HotkeyWheelManager
         if (this.selectedIndex < 0 || this.selectedIndex >= this.activeEntries.size()) return;
         WheelAction a = this.activeEntries.get(this.selectedIndex);
         if (a == null) return;
+        if (HotkeyWheelConfigStore.INSTANCE.wheelDebugLogging())
+        {
+            HotkeyWheelClient.LOGGER.info(
+                    "HotkeyWheel triggerSelected: activeKeyCode={} slice={} actionClass={} actionId={} label={}",
+                    this.activeKeyCode,
+                    this.selectedIndex,
+                    a.getClass().getSimpleName(),
+                    a.getActionId(),
+                    a.getLabel());
+        }
         try
         {
             a.activate();
