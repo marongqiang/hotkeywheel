@@ -151,7 +151,13 @@ public final class HotkeyWheelManager
     public boolean onKeyboardKey(int key, int scancode, int action, int modifiers)
     {
         if (key == HotkeyKeyCodes.KEY_NONE) return false;
-        if (this.mc.currentScreen != null) return false;
+        // Drop keys we still think are held when GLFW says they are not (missed RELEASE after alt-tab, focus loss, etc.).
+        this.reconcileHeldKeysWithGlfw();
+        if (this.mc.currentScreen != null)
+        {
+            this.logDigit1KeyDiag(key, action, "screen_open", "", -1);
+            return false;
+        }
         boolean isPress = (action == GLFW.GLFW_PRESS || action == GLFW.GLFW_REPEAT);
         boolean isRelease = (action == GLFW.GLFW_RELEASE);
 
@@ -180,13 +186,55 @@ public final class HotkeyWheelManager
         }
         if (isPress)
         {
-            if (this.isWheelBlockedByWhitelistForKeyPress(key, modifiers)) return false;
+            if (this.isWheelBlockedByWhitelistForKeyPress(key, modifiers))
+            {
+                this.logDigit1KeyDiag(key, action, "whitelist_blocked", HotkeyWheelKeyComboUtil.buildComboIdFromEventWithHeldKeys(key, modifiers, this.heldKeys), -1);
+                return false;
+            }
             List<WheelAction> entries = this.collectWheelActionsForEvent(key, modifiers);
-            if (entries.size() < 2) return false;
+            if (entries.size() < 2)
+            {
+                this.logDigit1KeyDiag(key, action, "too_few_actions", HotkeyWheelKeyComboUtil.buildComboIdFromEventWithHeldKeys(key, modifiers, this.heldKeys), entries.size());
+                return false;
+            }
+            this.logDigit1KeyDiag(key, action, "opening_wheel", HotkeyWheelKeyComboUtil.buildComboIdFromEventWithHeldKeys(key, modifiers, this.heldKeys), entries.size());
             this.openWith(key, entries);
             return true;
         }
         return false;
+    }
+
+    private void reconcileHeldKeysWithGlfw()
+    {
+        if (this.heldKeys.isEmpty()) return;
+        if (this.mc.getWindow() == null) return;
+        long handle = this.mc.getWindow().getHandle();
+        if (handle == 0L) return;
+        this.heldKeys.removeIf(k -> {
+            if (k == HotkeyKeyCodes.KEY_NONE) return true;
+            return org.lwjgl.glfw.GLFW.glfwGetKey(handle, k) != GLFW.GLFW_PRESS;
+        });
+    }
+
+    /** When {@code Generic.ui.debugLogging} is true, log one line for digit-1 / keypad-1 presses to diagnose combo id vs whitelist. */
+    private void logDigit1KeyDiag(int key, int action, String phase, String comboId, int entryCount)
+    {
+        if (HotkeyWheelConfigStore.INSTANCE.wheelDebugLogging() == false) return;
+        if (action != GLFW.GLFW_PRESS) return;
+        if (key != GLFW.GLFW_KEY_1 && key != GLFW.GLFW_KEY_KP_1) return;
+        if ("screen_open".equals(phase))
+        {
+            HotkeyWheelClient.LOGGER.info("HotkeyWheel digit1: phase=screen_open (currentScreen blocks wheel)");
+            return;
+        }
+        if (entryCount < 0)
+        {
+            HotkeyWheelClient.LOGGER.info("HotkeyWheel digit1: phase={} comboId={}", phase, comboId);
+        }
+        else
+        {
+            HotkeyWheelClient.LOGGER.info("HotkeyWheel digit1: phase={} comboId={} entries={}", phase, comboId, entryCount);
+        }
     }
 
     /** Sync slice index to pointer position at the moment the bind is released. */
