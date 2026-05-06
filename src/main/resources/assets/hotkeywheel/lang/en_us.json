@@ -1,6 +1,6 @@
 {
   "hotkeywheel.ui.wheel_title": "Tactical Wheel",
-  "hotkeywheel.ui.hub_cancel": "Release to cancel",
+  "hotkeywheel.ui.hub_cancel": "Tap key to open — left-click a slice to confirm — Esc or tap key again to close",
   "key.category.hotkeywheel": "Hotkey Wheel",
   "key.hotkeywheel.openconfig": "Open hotkey wheel settings",
   "hotkeywheel.modname.minecraft": "Minecraft",

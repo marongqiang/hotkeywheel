@@ -3,7 +3,8 @@
 	"package": "fi.dy.masa.hotkeywheel.mixin",
 	"compatibilityLevel": "JAVA_17",
 	"client": [
-		"KeyboardMixin"
+		"KeyboardMixin",
+		"MouseMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

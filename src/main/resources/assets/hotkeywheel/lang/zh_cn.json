@@ -1,6 +1,6 @@
 {
   "hotkeywheel.ui.wheel_title": "战术轮盘",
-  "hotkeywheel.ui.hub_cancel": "松手以取消",
+  "hotkeywheel.ui.hub_cancel": "点按一次按键打开 — 左键点扇区确认 — Esc 或再点同一键关闭",
   "key.category.hotkeywheel": "快捷键轮盘",
   "key.hotkeywheel.openconfig": "打开轮盘设置",
   "hotkeywheel.modname.minecraft": "Minecraft",

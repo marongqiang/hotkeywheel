@@ -20,12 +20,16 @@ public class KeyboardMixin
         if (key == HotkeyKeyCodes.KEY_NONE) return;
         if (HotkeyWheelManager.INSTANCE == null) return;
         boolean handled = HotkeyWheelManager.INSTANCE.onKeyboardKey(key, scancode, action, modifiers);
-        if (handled && HotkeyWheelManager.INSTANCE.isOpen())
+        if (handled)
         {
-            if (HotkeyWheelConfigStore.INSTANCE.wheelDebugLogging() && action == GLFW.GLFW_RELEASE)
+            // Must cancel even when the wheel is not open yet: tap-arm returns handled on PRESS so the opener
+            // key must not reach vanilla KeyBindings until the user picks a slice (or aborts).
+            if (HotkeyWheelConfigStore.INSTANCE.wheelDebugLogging()
+                    && HotkeyWheelManager.INSTANCE.isOpen()
+                    && action == GLFW.GLFW_RELEASE)
             {
                 HotkeyWheelClient.LOGGER.info(
-                        "HotkeyWheel keyboard: cancel onKey RELEASE key={} scancode={} modifiers={}",
+                        "HotkeyWheel keyboard: swallow RELEASE key={} scancode={} modifiers={} (wheel overlay blocks vanilla; not tap-arm cancel)",
                         key,
                         scancode,
                         modifiers);
