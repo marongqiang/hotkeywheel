@@ -226,17 +226,17 @@ public final class HotkeyWheelConfigStore
         try (Reader r = Files.newBufferedReader(this.file)) { this.parse(r); }
         catch (JsonSyntaxException e)
         {
-            e.printStackTrace();
+            HotkeyWheelClient.LOGGER.warn("Hotkey Wheel: invalid config JSON '{}'", this.file, e);
             this.resetToDefaultConfigAndSave();
         }
         catch (JsonParseException e)
         {
-            e.printStackTrace();
+            HotkeyWheelClient.LOGGER.warn("Hotkey Wheel: failed to parse config '{}'", this.file, e);
             this.resetToDefaultConfigAndSave();
         }
         catch (IOException e)
         {
-            e.printStackTrace();
+            HotkeyWheelClient.LOGGER.warn("Hotkey Wheel: failed to read config '{}'", this.file, e);
         }
 
         // Migration: older configs may have persisted the previous default icon scales,
@@ -331,7 +331,7 @@ public final class HotkeyWheelConfigStore
             out.add("Generic", outG);
             Files.writeString(this.file, GSON.toJson(out));
         }
-        catch (IOException e) { e.printStackTrace(); }
+        catch (IOException e) { HotkeyWheelClient.LOGGER.warn("Hotkey Wheel: failed to save config '{}'", this.file, e); }
     }
 
     private void parse(Reader r) throws JsonParseException

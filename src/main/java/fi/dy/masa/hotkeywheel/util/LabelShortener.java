@@ -2,12 +2,14 @@ package fi.dy.masa.hotkeywheel.util;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * Short labels for the radial wheel (strips long config keys, toggles, etc.).
  */
 public final class LabelShortener
 {
+    private static final Pattern PATTERN_WHITESPACE = Pattern.compile("\\s+");
     private static final int TAIL_WORDS = 3;
 
     private LabelShortener() {}
@@ -25,7 +27,7 @@ public final class LabelShortener
         t = stripPrefix(t, "open");
         t = stripPrefix(t, "openGui");
         t = t.replace("Schemati", "Schem").replace("schematic", "schem");
-        t = t.trim().replaceAll("\\s+", " ");
+        t = PATTERN_WHITESPACE.matcher(t.trim()).replaceAll(" ");
         if (t.length() <= maxChars) return t;
         return t.substring(0, Math.max(0, maxChars - 1)) + "…";
     }

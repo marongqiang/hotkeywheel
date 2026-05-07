@@ -10,3 +10,4 @@ run/
 # 日志文件
 *.log
 .aider*
+bin/

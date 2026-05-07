@@ -156,7 +156,6 @@ public class ComboFunctionDetailScreen extends Screen
             if (on)
             {
                 context.drawTextWithShadow(this.textRenderer, "✔", cbx + 4, cby + 2, 0xFFFFFFFF);
-                context.drawTextWithShadow(this.textRenderer, "✔", cbx + 4, cby + 2, 0xFFFFFFFF);
             }
             String fn = row.functionNameI18n();
             int fnMax = xCustom - xFn - 10;

@@ -151,7 +151,6 @@ public class HotkeyWheelConfigScreen extends Screen
             if (on)
             {
                 context.drawTextWithShadow(this.textRenderer, "✔", cbx + 4, cby + 2, 0xFFFFFFFF);
-                context.drawTextWithShadow(this.textRenderer, "✔", cbx + 4, cby + 2, 0xFFFFFFFF);
             }
 
             String hotkey = HotkeyWheelKeyComboUtil.comboIdToDisplayString(g.comboId());

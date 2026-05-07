@@ -30,6 +30,11 @@ public final class HotkeyWheelCustomIconUtil
 
     private HotkeyWheelCustomIconUtil() { }
 
+    public static void clearTextures()
+    {
+        TEXTURES.clear();
+    }
+
     public static Path iconsDir()
     {
         return FabricLoader.getInstance().getConfigDir().resolve(HotkeyWheelReference.MOD_ID).resolve("icons");
