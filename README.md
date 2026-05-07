@@ -17,6 +17,15 @@
 - **UI 预览与拖拽排序**：在“此按键绑定的功能”界面点击“UI预览”，打开轮盘预览界面，可直接拖拽扇区调整顺序（保存到配置）。
 - **MaLiLib 兼容**：支持 MaLiLib 模组的快捷键（可选依赖）。
 
+## MRQ 修复
+
+本分支基于上游代码进行了以下 bug 修复：
+
+- **勾选标记重复渲染**: `HotkeyWheelConfigScreen` 和 `ComboFunctionDetailScreen` 中 `drawTextWithShadow` 被重复调用两次，已删除冗余调用
+- **日志规范化**: `HotkeyWheelConfigStore` 中 5 处 `printStackTrace()` 改为 `HotkeyWheelClient.LOGGER.warn`
+- **Pattern 缓存**: `LabelShortener` 中 `replaceAll("\\s+")` 提取为 `PATTERN_WHITESPACE` 静态编译
+- **纹理缓存清理**: `HotkeyWheelCustomIconUtil` 添加 `clearTextures()` 方法，支持资源重载后清理过期纹理
+
 ## 当前版本
 
 - **Minecraft**：1.20.1（Fabric）
